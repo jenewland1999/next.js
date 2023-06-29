@@ -131,18 +131,23 @@ jobs:
               turbo run build-native-release --remote-cache-timeout 90 --summarize -- --target aarch64-apple-darwin
               strip -x packages/next-swc/native/next-swc.*.node
           - host: ubuntu-latest
+            host-arch: aarch64
             target: 'aarch64-unknown-linux-gnu'
-            docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:stable-2022-10-24-aarch64
+            # docker: ghcr.io/napi-rs/napi-rs/nodejs-rust:lts-debian-aarch64
             build: >-
               set -e &&
               apt update &&
               apt install -y pkg-config &&
+              source "$HOME/.cargo/env" &&
               export JEMALLOC_SYS_WITH_LG_PAGE=16 &&
               rustup toolchain install "${RUST_TOOLCHAIN}" &&
               rustup default "${RUST_TOOLCHAIN}" &&
               rustup target add aarch64-unknown-linux-gnu &&
               npm i -g "@napi-rs/cli@${NAPI_CLI_VERSION}" "turbo@${TURBO_VERSION}" && if [ ! -f $(dirname $(which yarn))/pnpm ]; then ln -s $(which yarn) $(dirname $(which yarn))/pnpm;fi &&
               export CC_aarch64_unknown_linux_gnu=/usr/aarch64-unknown-linux-gnu/bin/aarch64-unknown-linux-gnu-gcc &&
+              ls -al &&
+              pwd &&
+              cat Cargo.toml &&
               turbo run build-native-release --remote-cache-timeout 90 --summarize -- --target aarch64-unknown-linux-gnu &&
               llvm-strip -x packages/next-swc/native/next-swc.*.node
           - host: ubuntu-latest
@@ -242,6 +247,43 @@ jobs:
             -v ${{ env.HOME }}/.cargo/registry:/root/.cargo/registry
             -v ${{ github.workspace }}:/build
             -w /build
+          run: ${{ matrix.settings.build }}
+
+      - name: Build on custom arch host prefetch
+        if: ${{ matrix.settings.host-arch }}
+        run: |
+            cargo check
+
+      - name: Build on custom arch host
+        if: ${{ matrix.settings.host-arch }}
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: aarch64
+          distro: bullseye
+          # Not required, but speeds up builds
+          githubToken: ${{ github.token }}
+          env: |
+            RUST_TOOLCHAIN: ${{ env.RUST_TOOLCHAIN }}
+            CARGO_INCREMENTAL: ${{ env.CARGO_INCREMENTAL }}
+            CARGO_TERM_COLOR: ${{ env.CARGO_TERM_COLOR }}
+            RUST_BACKTRACE: ${{ env.RUST_BACKTRACE }}
+            CARGO_REGISTRIES_CRATES_IO_PROTOCOL: ${{ env.CARGO_REGISTRIES_CRATES_IO_PROTOCOL }}
+            NAPI_CLI_VERSION: ${{ env.NAPI_CLI_VERSION }}
+            TURBO_VERSION: ${{ env.TURBO_VERSION }}
+            TURBO_TEAM: vercel
+            TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+            TURBO_REMOTE_ONLY: true
+          dockerRunArgs: |
+            -v ${{ env.HOME }}/.cargo/git:/root/.cargo/git
+            -v ${{ env.HOME }}/.cargo/registry:/root/.cargo/registry
+            -v ${{ github.workspace }}:/build
+            -w /build
+          install: |
+            apt-get update && apt-get install -y curl
+            curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+            apt-get install -y nodejs
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            corepack enable
           run: ${{ matrix.settings.build }}
 
       - name: 'Build'
