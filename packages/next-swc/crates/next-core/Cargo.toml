@@ -10,7 +10,7 @@ bench = false
 
 [dependencies]
 anyhow = { workspace = true }
-async-recursion = "1.0.2"
+async-recursion = { workspace = true }
 async-trait = { workspace = true }
 once_cell = { workspace = true }
 qstring = { workspace = true }

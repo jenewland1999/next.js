@@ -10,8 +10,7 @@ use turbopack_binding::{
                 FreeVarReference, FreeVarReferencesVc,
             },
             environment::{
-                EdgeWorkerEnvironment, EnvironmentIntention, EnvironmentVc, ExecutionEnvironment,
-                ServerAddrVc,
+                EdgeWorkerEnvironment, EnvironmentVc, ExecutionEnvironment, ServerAddrVc,
             },
             free_var_references,
         },
@@ -21,7 +20,7 @@ use turbopack_binding::{
 };
 
 use crate::{
-    next_config::NextConfigVc, next_import_map::get_next_edge_import_map,
+    mode::NextMode, next_config::NextConfigVc, next_import_map::get_next_edge_import_map,
     next_server::context::ServerContextType,
     next_shared::resolve::UnsupportedModulesResolvePluginVc, util::foreign_code_context_condition,
 };
@@ -64,14 +63,10 @@ fn next_edge_free_vars(project_path: FileSystemPathVc) -> FreeVarReferencesVc {
 pub fn get_edge_compile_time_info(
     project_path: FileSystemPathVc,
     server_addr: ServerAddrVc,
-    intention: Value<EnvironmentIntention>,
 ) -> CompileTimeInfoVc {
-    CompileTimeInfo::builder(EnvironmentVc::new(
-        Value::new(ExecutionEnvironment::EdgeWorker(
-            EdgeWorkerEnvironment { server_addr }.into(),
-        )),
-        intention,
-    ))
+    CompileTimeInfo::builder(EnvironmentVc::new(Value::new(
+        ExecutionEnvironment::EdgeWorker(EdgeWorkerEnvironment { server_addr }.into()),
+    )))
     .defines(next_edge_defines())
     .free_var_references(next_edge_free_vars(project_path))
     .cell()
@@ -81,6 +76,7 @@ pub fn get_edge_compile_time_info(
 pub async fn get_edge_resolve_options_context(
     project_path: FileSystemPathVc,
     ty: Value<ServerContextType>,
+    mode: NextMode,
     next_config: NextConfigVc,
     execution_context: ExecutionContextVc,
 ) -> Result<ResolveOptionsContextVc> {
